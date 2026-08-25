@@ -409,6 +409,7 @@ Panel {
         visible: root.statusMessage !== ""
         width: parent.width
         text: root.statusMessage
+        textFormat: Text.PlainText
         color: Color.accent
         font.family: Style.font.menuFamily
         font.pixelSize: Style.font.bodySmall
@@ -478,6 +479,7 @@ Panel {
 
                       Text {
                         text: card.modelData.name
+                        textFormat: Text.PlainText
                         color: Color.menu.text
                         font.family: Style.font.menuFamily
                         font.pixelSize: Style.font.body
@@ -488,6 +490,7 @@ Panel {
 
                       Text {
                         text: root.kindBadge(card.modelData)
+                        textFormat: Text.PlainText
                         color: Util.alpha(Color.accent, 0.85)
                         font.family: Style.font.menuFamily
                         font.pixelSize: Style.font.caption
@@ -498,6 +501,7 @@ Panel {
                       Text {
                         visible: card.modelData.version !== ""
                         text: "v" + card.modelData.version
+                        textFormat: Text.PlainText
                         color: Util.alpha(Color.menu.text, 0.40)
                         font.family: Style.font.menuFamily
                         font.pixelSize: Style.font.caption
@@ -507,6 +511,7 @@ Panel {
                     Text {
                       width: parent.width
                       text: card.modelData.id + (card.modelData.firstParty ? root.words(" · integrado", " · built-in") : "")
+                      textFormat: Text.PlainText
                       color: Util.alpha(Color.menu.text, 0.42)
                       font.family: Style.font.menuFamily
                       font.pixelSize: Style.font.caption
@@ -575,6 +580,7 @@ Panel {
                     text: card.modelData.description !== ""
                       ? card.modelData.description
                       : root.words("Este plugin no declara una descripción.", "This plugin has no declared description.")
+                    textFormat: Text.PlainText
                     color: Util.alpha(Color.menu.text, 0.72)
                     font.family: Style.font.menuFamily
                     font.pixelSize: Style.font.bodySmall
@@ -584,6 +590,7 @@ Panel {
                   Text {
                     width: parent.width
                     text: card.modelData.author !== "" ? "" + card.modelData.author : ""
+                    textFormat: Text.PlainText
                     visible: text !== ""
                     color: Util.alpha(Color.menu.text, 0.40)
                     font.family: Style.font.menuFamily
@@ -611,6 +618,7 @@ Panel {
                       Text {
                         width: parent.width * 0.45
                         text: modelData.label
+                        textFormat: Text.PlainText
                         color: Util.alpha(Color.menu.text, 0.70)
                         font.family: Style.font.menuFamily
                         font.pixelSize: Style.font.caption
