@@ -177,19 +177,28 @@ Panel {
     return out
   }
 
-  function _stringifyCapped(v) {
-    if (v == null) return "null"
-    if (typeof v === "string") return JSON.stringify(_trunc(v, 512))
+  function _sanitize(v, depth) {
+    if (v == null) return null
+    if (depth <= 0) return typeof v === "string" ? _trunc(v, 64) : null
+    if (typeof v === "string") return _trunc(v, 256)
+    if (typeof v === "number" || typeof v === "boolean") return v
     if (Array.isArray(v)) {
-      var a = v.slice(0, 32).map(function(e) { return typeof e === "string" ? _trunc(e, 256) : e })
-      var s = JSON.stringify(a); return s.length > 512 ? s.slice(0, 512) : s
+      var out = []
+      for (var i = 0; i < v.length && out.length < 16; i++) out.push(_sanitize(v[i], depth - 1))
+      return out
     }
     if (typeof v === "object") {
       var o = {}; var c = 0
-      for (var k in v) { if (c++ >= 32) break; var val = v[k]; o[_trunc(k, 64)] = typeof val === "string" ? _trunc(val, 256) : val }
-      var j = JSON.stringify(o); return j.length > 512 ? j.slice(0, 512) : j
+      for (var k in v) { if (c++ >= 16) break; o[_trunc(k, 64)] = _sanitize(v[k], depth - 1) }
+      return o
     }
-    var t = JSON.stringify(v); return t && t.length > 512 ? t.slice(0, 512) : t
+    return _trunc(String(v), 128)
+  }
+
+  function _stringifyCapped(v) {
+    var sanitized = _sanitize(v, 3)
+    var s = JSON.stringify(sanitized)
+    return s && s.length > 512 ? s.slice(0, 512) : (s || "null")
   }
 
   function openSettings(p) {
@@ -291,12 +300,15 @@ Panel {
   }
   onRegistryChanged: refresh()
 
+  Connections {
+    target: root.registry
+    function onScanFinished() { root.refresh() }
+  }
+
   Process {
     id: removeProc
     property string pluginId: ""
-    command: ["bash", "-c",
-      "omarchy plugin disable \"$1\" >/dev/null 2>&1; exec omarchy plugin remove \"$1\" --yes",
-      "plugin-control-center", pluginId]
+    command: ["omarchy", "plugin", "remove", pluginId, "--yes"]
     onExited: function(code) {
       root.busy = false
       root.statusMessage = code === 0
@@ -653,18 +665,18 @@ Panel {
         font.letterSpacing: 1.0
       }
     }
-  }
 
-  ConfirmDialog {
-    id: confirmDialog
-    anchors.fill: parent
-    z: 20
-    background: Color.menu.background
-    foreground: Color.menu.text
-    selectedText: Color.accent
-    cancelText: root.words("Cancelar", "Cancel")
-    confirmText: root.words("Desinstalar", "Uninstall")
-    onCanceled: { opened = false; root.pendingRemoveId = "" }
-    onConfirmed: root.confirmRemove()
+    ConfirmDialog {
+      id: confirmDialog
+      anchors.fill: parent
+      z: 20
+      background: Color.menu.background
+      foreground: Color.menu.text
+      selectedText: Color.accent
+      cancelText: root.words("Cancelar", "Cancel")
+      confirmText: root.words("Desinstalar", "Uninstall")
+      onCanceled: { opened = false; root.pendingRemoveId = "" }
+      onConfirmed: root.confirmRemove()
+    }
   }
 }
