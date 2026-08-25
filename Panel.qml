@@ -73,7 +73,7 @@ Panel {
       if (seen++ >= _maxPlugins) break
       var m = installed[id]
       if (!m || !m.id || m.id === "omarchy.bar") continue
-      var kinds = Array.isArray(m.kinds) ? m.kinds.slice(0, 16) : []
+      var kinds = Array.isArray(m.kinds) ? m.kinds.slice(0, 16).map(function(k) { return _trunc(k, 64) }) : []
       list.push({
         id: _trunc(m.id, 128),
         name: _trunc(m.name || m.id, _maxField),
@@ -81,7 +81,7 @@ Panel {
         description: _trunc(m.description || "", _maxDesc),
         author: _trunc(m.author || "", 80),
         firstParty: m.__isFirstParty === true,
-        kinds: _trunc(kinds.join(", "), 200),
+        kinds: kinds.join(", ").slice(0, 200),
         enabled: reg.isEnabled(m.id),
         inBar: reg.inBar(m.id),
         sourceDir: _trunc(m.__sourceDir || "", 256)
@@ -139,9 +139,15 @@ Panel {
   }
 
   function currentSettings(p) {
+    // ponytail: cap copied keys/values before they reach settings objects
     var out = ({})
     var base = defaultsOf(p)
-    for (var key in base) out[key] = base[key]
+    var bc = 0
+    for (var key in base) {
+      if (bc++ >= 32) break
+      var bv = base[key]
+      out[_trunc(key, 64)] = typeof bv === "string" ? _trunc(bv, 256) : bv
+    }
     var live = hostWidget && hostWidget.moduleName === p.id ? hostWidget.settings : null
     if (!live && registry && registry.shellConfigProvider) {
       var config = registry.shellConfigProvider()
@@ -157,8 +163,33 @@ Panel {
         }
       }
     }
-    if (live) for (var k2 in live) out[k2] = live[k2]
+    if (live) {
+      var lc = 0
+      for (var k2 in live) {
+        if (lc++ >= 32) break
+        if (k2 in out) continue
+        var lv = live[k2]
+        if (k2 === "id") out[k2] = _trunc(lv, 128)
+        else if (typeof lv === "string") out[k2] = _trunc(lv, 512)
+        else out[_trunc(k2, 64)] = lv
+      }
+    }
     return out
+  }
+
+  function _stringifyCapped(v) {
+    if (v == null) return "null"
+    if (typeof v === "string") return JSON.stringify(_trunc(v, 512))
+    if (Array.isArray(v)) {
+      var a = v.slice(0, 32).map(function(e) { return typeof e === "string" ? _trunc(e, 256) : e })
+      var s = JSON.stringify(a); return s.length > 512 ? s.slice(0, 512) : s
+    }
+    if (typeof v === "object") {
+      var o = {}; var c = 0
+      for (var k in v) { if (c++ >= 32) break; var val = v[k]; o[_trunc(k, 64)] = typeof val === "string" ? _trunc(val, 256) : val }
+      var j = JSON.stringify(o); return j.length > 512 ? j.slice(0, 512) : j
+    }
+    var t = JSON.stringify(v); return t && t.length > 512 ? t.slice(0, 512) : t
   }
 
   function openSettings(p) {
@@ -168,7 +199,7 @@ Panel {
     var current = currentSettings(p)
     var fields = schemaFields(p)
     for (var i = 0; i < fields.length; i++)
-      draftSettings[fields[i].key] = _trunc(JSON.stringify(current[fields[i].key]), 512)
+      draftSettings[fields[i].key] = _stringifyCapped(current[fields[i].key])
     expandedId = p.id
   }
 
