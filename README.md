@@ -2,6 +2,8 @@
 
 A compact Omarchy bar widget for seeing and managing the plugins already installed on your system.
 
+![Plugin Control Center in English](preview.png)
+
 ## Why it exists
 
 Omarchy makes it easy to install plugins, and community plugins accumulate quickly. After a while, it becomes difficult to answer basic questions:
@@ -90,6 +92,8 @@ For a live check, open the widget and inspect the rendered panel:
 ```bash
 omarchy-shell io.github.brm-src.plugin-control-center open
 ```
+
+For deterministic English screenshots or QA, launch the shell with `PLUGIN_CONTROL_CENTER_LANG=en`. Without that override, the widget follows the system locale.
 
 ## License
 

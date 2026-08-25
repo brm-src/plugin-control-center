@@ -10,7 +10,9 @@ Panel {
   ipcTarget: "io.github.brm-src.plugin-control-center"
   manageIpc: true
 
-  property string uiLanguage: Qt.locale().name.toLowerCase().startsWith("es") ? "es" : "en"
+  property string uiLanguage: String(Quickshell.env("PLUGIN_CONTROL_CENTER_LANG") || "").toLowerCase() === "en"
+    ? "en"
+    : (Qt.locale().name.toLowerCase().startsWith("es") ? "es" : "en")
   readonly property bool isSpanish: uiLanguage === "es"
   function words(es, en) { return root.isSpanish ? es : en }
 
