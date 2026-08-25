@@ -1,22 +1,22 @@
 {
-  "schemaVersion": 1,
-  "id": "io.github.brm-src.plugin-control-center",
-  "name": "Plugin Control Center",
-  "version": "1.0.0",
-  "author": "Cris / brm-src",
-  "license": "MIT",
-  "description": "See every installed Omarchy plugin, enable or disable them, edit their bar settings, and uninstall third-party ones, from one compact panel.",
-  "kinds": [
-    "bar-widget"
-  ],
-  "entryPoints": {
-    "barWidget": "main.qml"
-  },
-  "barWidget": {
-    "displayName": "Plugin Control Center",
-    "description": "View, configure, and uninstall installed plugins.",
-    "category": "System",
-    "allowMultiple": false,
-    "defaultSection": "right"
-  }
+    "schemaVersion": 1,
+    "id": "io.github.brm-src.plugin-control-center",
+    "name": "Plugin Control Center",
+    "version": "1.0.1",
+    "author": "Cris / brm-src",
+    "license": "MIT",
+    "description": "See every installed Omarchy plugin, enable or disable them, edit their bar settings, and uninstall third-party ones, from one compact panel.",
+    "kinds": [
+        "bar-widget"
+    ],
+    "entryPoints": {
+        "barWidget": "main.qml"
+    },
+    "barWidget": {
+        "displayName": "Plugin Control Center",
+        "description": "View, configure, and uninstall installed plugins.",
+        "category": "System",
+        "allowMultiple": false,
+        "defaultSection": "right"
+    }
 }

@@ -34,15 +34,26 @@ Panel {
   property var draftSettings: ({})    // key -> string, edited before saving
   property string pendingRemoveId: ""
 
+  // ponytail: caps prevent a malicious installed plugin from forcing
+  // unbounded arrays/strings into the shared shell (Panel.qml runs in the bar).
+  readonly property int _maxPlugins: 256
+  readonly property int _maxField: 160
+  readonly property int _maxDesc: 500
+  readonly property int _maxSchema: 64
+  function _trunc(v, n) { var s = String(v == null ? "" : v); return s.length > n ? s.slice(0, n) : s }
+
   readonly property var filteredPlugins: {
-    var query = filterText.toLowerCase()
-    return plugins.filter(function(p) {
-      if (query !== "" && String(p.name).toLowerCase().indexOf(query) === -1 && p.id.toLowerCase().indexOf(query) === -1) return false
-      if (viewFilter === "enabled" && !p.enabled) return false
-      if (viewFilter === "disabled" && p.enabled) return false
-      if (viewFilter === "third-party" && p.firstParty) return false
-      return true
-    })
+    var query = _trunc(filterText, 120).toLowerCase()
+    var out = []
+    for (var i = 0; i < plugins.length && out.length < _maxPlugins; i++) {
+      var p = plugins[i]
+      if (query !== "" && String(p.name).toLowerCase().indexOf(query) === -1 && p.id.toLowerCase().indexOf(query) === -1) continue
+      if (viewFilter === "enabled" && !p.enabled) continue
+      if (viewFilter === "disabled" && p.enabled) continue
+      if (viewFilter === "third-party" && p.firstParty) continue
+      out.push(p)
+    }
+    return out
   }
 
   function refresh() {
@@ -55,21 +66,23 @@ Panel {
     statusMessage = statusMessage === "Registro de plugins no disponible."
       || statusMessage === "Plugin registry unavailable." ? "" : statusMessage
     var installed = reg.installedPlugins
+    var seen = 0
     for (var id in installed) {
+      if (seen++ >= _maxPlugins) break
       var m = installed[id]
       if (!m || !m.id || m.id === "omarchy.bar") continue
-      var kinds = Array.isArray(m.kinds) ? m.kinds : []
+      var kinds = Array.isArray(m.kinds) ? m.kinds.slice(0, 16) : []
       list.push({
-        id: String(m.id),
-        name: String(m.name || m.id),
-        version: String(m.version || ""),
-        description: String(m.description || ""),
-        author: String(m.author || ""),
+        id: _trunc(m.id, 128),
+        name: _trunc(m.name || m.id, _maxField),
+        version: _trunc(m.version || "", 32),
+        description: _trunc(m.description || "", _maxDesc),
+        author: _trunc(m.author || "", 80),
         firstParty: m.__isFirstParty === true,
-        kinds: kinds.join(", "),
+        kinds: _trunc(kinds.join(", "), 200),
         enabled: reg.isEnabled(m.id),
         inBar: reg.inBar(m.id),
-        sourceDir: String(m.__sourceDir || "")
+        sourceDir: _trunc(m.__sourceDir || "", 256)
       })
     }
     list.sort(function(a, b) {
@@ -153,7 +166,7 @@ Panel {
     var current = currentSettings(p)
     var fields = schemaFields(p)
     for (var i = 0; i < fields.length; i++)
-      draftSettings[fields[i].key] = JSON.stringify(current[fields[i].key])
+      draftSettings[fields[i].key] = _trunc(JSON.stringify(current[fields[i].key]), 512)
     expandedId = p.id
   }
 
@@ -165,15 +178,18 @@ Panel {
   function schemaFields(p) {
     var flat = []
     var schema = schemaOf(p)
-    for (var i = 0; i < schema.length; i++) {
+    if (!Array.isArray(schema)) return flat
+    for (var i = 0; i < schema.length && flat.length < _maxSchema; i++) {
       var opt = schema[i]
+      if (!opt || typeof opt !== "object") continue
       if (opt.type === "object" && Array.isArray(opt.options)) {
-        for (var j = 0; j < opt.options.length; j++) {
+        for (var j = 0; j < opt.options.length && flat.length < _maxSchema; j++) {
           var sub = opt.options[j]
-          flat.push({ key: opt.key + "." + sub.key, label: sub.label || sub.key, type: sub.type || "string", min: sub.min, max: sub.max, step: sub.step })
+          if (!sub || typeof sub !== "object") continue
+          flat.push({ key: _trunc(opt.key, 64) + "." + _trunc(sub.key, 64), label: _trunc(sub.label || sub.key, 80), type: _trunc(sub.type || "string", 16), min: sub.min, max: sub.max, step: sub.step })
         }
       } else {
-        flat.push({ key: opt.key, label: opt.label || opt.key, type: opt.type || "string", min: opt.min, max: opt.max, step: opt.step })
+        flat.push({ key: _trunc(opt.key, 64), label: _trunc(opt.label || opt.key, 80), type: _trunc(opt.type || "string", 16), min: opt.min, max: opt.max, step: opt.step })
       }
     }
     return flat
@@ -317,7 +333,7 @@ Panel {
           width: parent.width - filterRow.width - Style.spacing.sm
           placeholderText: root.words("Buscar plugins…", "Search plugins…")
           foreground: Color.menu.text
-          onTextChanged: root.filterText = text
+          onTextChanged: root.filterText = _trunc(text, 120)
         }
 
         Row {
@@ -567,7 +583,7 @@ Panel {
                         foreground: Color.menu.text
                         font.pixelSize: Style.font.caption
                         text: root.draftSettings[field.key] !== undefined ? root.draftSettings[field.key] : ""
-                        onTextEdited: root.draftSettings[field.key] = text
+                        onTextEdited: root.draftSettings[field.key] = _trunc(text, 512)
                         placeholderText: field.type === "boolean"
                           ? root.words("true o false", "true or false")
                           : (field.type === "integer" || field.type === "number")
