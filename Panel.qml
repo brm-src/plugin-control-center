@@ -59,15 +59,26 @@ Panel {
   }
 
   function refresh() {
-    var reg = registry
-    if (!reg || !reg.installedPlugins) {
-      statusMessage = root.words("Registro de plugins no disponible.", "Plugin registry unavailable.")
+    if (listProcess.running) return
+    statusMessage = ""
+    listProcess.running = true
+  }
+
+  function applyPluginList(raw) {
+    var installed
+    try {
+      installed = JSON.parse(String(raw || ""))
+    } catch (e) {
+      plugins = []
+      statusMessage = root.words("No se pudo leer el registro de plugins.", "Could not read the plugin registry.")
+      return
+    }
+    if (!Array.isArray(installed)) {
+      plugins = []
+      statusMessage = root.words("El registro de plugins no es válido.", "The plugin registry is invalid.")
       return
     }
     var list = []
-    statusMessage = statusMessage === "Registro de plugins no disponible."
-      || statusMessage === "Plugin registry unavailable." ? "" : statusMessage
-    var installed = reg.installedPlugins
     var seen = 0
     for (var id in installed) {
       if (seen++ >= _maxPlugins) break
@@ -80,11 +91,11 @@ Panel {
         version: _trunc(m.version || "", 32),
         description: _trunc(m.description || "", _maxDesc),
         author: _trunc(m.author || "", 80),
-        firstParty: m.__isFirstParty === true,
+        firstParty: m.firstParty === true,
         kinds: kinds.join(", ").slice(0, 200),
-        enabled: reg.isEnabled(m.id),
-        inBar: reg.inBar(m.id),
-        sourceDir: _trunc(m.__sourceDir || "", 256)
+        enabled: m.enabled === true,
+        inBar: false,
+        sourceDir: ""
       })
     }
     list.sort(function(a, b) {
@@ -111,17 +122,14 @@ Panel {
   }
 
   function toggleEnabled(p) {
-    var reg = registry
-    if (!reg || busy) return
+    if (busy || toggleProcess.running) return
     busy = true
     statusMessage = p.enabled
       ? root.words("Desactivando " + p.name + "…", "Disabling " + p.name + "…")
       : root.words("Activando " + p.name + "…", "Enabling " + p.name + "…")
-    var ok = reg.setEnabled(p.id, !p.enabled, {})
-    busy = false
-    if (!ok) statusMessage = reg.lastEnableError || root.words("No se pudo cambiar el estado.", "Could not change state.")
-    else statusMessage = ""
-    refresh()
+    toggleProcess.pluginId = p.id
+    toggleProcess.command = ["omarchy", "plugin", p.enabled ? "disable" : "enable", p.id]
+    toggleProcess.running = true
   }
 
   // ---- inline widget settings -------------------------------------------
@@ -300,9 +308,31 @@ Panel {
   }
   onRegistryChanged: refresh()
 
-  Connections {
-    target: root.registry
-    function onScanFinished() { root.refresh() }
+  Process {
+    id: listProcess
+    command: ["omarchy-shell", "shell", "listPlugins"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: root.applyPluginList(text)
+    }
+    onExited: function(code) {
+      if (code !== 0) {
+        root.plugins = []
+        root.statusMessage = root.words("No se pudo consultar Omarchy.", "Could not query Omarchy.")
+      }
+    }
+  }
+
+  Process {
+    id: toggleProcess
+    property string pluginId: ""
+    onExited: function(code) {
+      root.busy = false
+      root.statusMessage = code === 0
+        ? root.words("Estado actualizado.", "State updated.")
+        : root.words("No se pudo cambiar el estado.", "Could not change state.")
+      root.refresh()
+    }
   }
 
   Process {

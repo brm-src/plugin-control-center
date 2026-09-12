@@ -65,7 +65,6 @@ BarWidget {
     bar: root.bar
     text: "󰏖"
     slotSize: Style.bar.statusSlot
-    opticalSize: 17
     tooltipText: root.words("Plugin Control Center", "Plugin Control Center")
     active: root.opened
     useActiveColor: true
